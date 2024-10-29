@@ -1,3 +1,24 @@
+## 3.26.1 (Oct 14, 2024)
+
+IMPROVEMENTS:
+- Update documentation sub account and additive ddos ([#465](https://github.com/imperva/terraform-provider-incapsula/pull/465))
+- Change how empty data values in policies are suppressed ([#440](https://github.com/imperva/terraform-provider-incapsula/pull/440))
+
+
+
+## 3.26.0 (Oct 1, 2024)
+
+IMPROVEMENTS:
+- Adding unknownClientsChallenge and blockNonEssentialBots to the waf security ddos rules ([#459](https://github.com/imperva/terraform-provider-incapsula/pull/459))
+- Adding validation in incapsula_security_rule_exception for url_patterns <> url ([#461](https://github.com/imperva/terraform-provider-incapsula/pull/461))
+
+
+## 3.25.6 (Sep 19, 2024)
+
+IMPROVEMENTS:
+- Add adpative DDoS activation mode to WAF security rule ([#456](https://github.com/imperva/terraform-provider-incapsula/pull/456))
+
+
 ## 3.25.5 (Jul 15, 2024)
 
 IMPROVEMENTS:
