@@ -165,8 +165,49 @@ func Provider() *schema.Provider {
 			// We can therefore assume that if it's missing it's 0.10 or 0.11
 			terraformVersion = "0.11+compatible"
 		}
-		return providerConfigure(d, terraformVersion)
+		client, err := providerConfigure(d, terraformVersion)
+		if err != nil {
+			return nil, err
+		}
+		//err = validateUniqueWafResourceAssignment(d, client)
+		//if err != nil {
+		//	return nil, err
+		//}
+		return client, err
 	}
 
 	return provider
 }
+
+//func validateUniqueWafResourceAssignment(d *schema.ResourceData, m interface{}) error {
+//	rawPlan := d.GetRawPlan()
+//	if rawPlan.IsNull() {
+//		return nil
+//	}
+//	client := m.(*Client)
+//	var mySet map[string]struct{}
+//	mySet = make(map[string]struct{})
+//	log.Printf("[DEBUG] TEST PROVIDER LIST: %s\n", rawPlan.AsValueMap())
+//	for _, resource := range rawPlan.AsValueMap() {
+//		if fmt.Sprintf("%v", resource.Type) == "incapsula_policy_asset_association" {
+//			policyID := fmt.Sprintf("%v", resource.GetAttr("policy_id"))
+//
+//			policyGetResponse, err := client.GetPolicy(policyID, nil)
+//
+//			if err != nil {
+//				log.Printf("[ERROR] Could not get Incapsula policy: %s - %s\n", policyID, err)
+//				return err
+//			}
+//			if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+//				assetId := fmt.Sprintf("%v", resource.GetAttr("policy_id"))
+//				if _, exists := mySet[assetId]; exists {
+//					return fmt.Errorf("site %s has more than one WAF Policy assigned", assetId)
+//				} else {
+//					mySet[assetId] = struct{}{}
+//				}
+//			}
+//		}
+//
+//	}
+//	return nil
+//}

@@ -1,8 +1,10 @@
 package incapsula
 
 import (
+	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"log"
 	"strings"
 )
@@ -16,7 +18,7 @@ func resourcePolicyAssetAssociation() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
-
+		CustomizeDiff: validateUniqueResource,
 		Schema: map[string]*schema.Schema{
 			// Required Arguments
 			"policy_id": {
@@ -133,5 +135,120 @@ func resourcePolicyAssetAssociationDelete(d *schema.ResourceData, m interface{})
 	// Implicitly clears the resource
 	d.SetId("")
 
+	return nil
+}
+
+func validateUniqueResource(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
+	rawPlan := d.GetRawState()
+	if rawPlan.IsNull() {
+		return nil
+	}
+	client := m.(*Client)
+	policyGetResponse, _ := client.GetPolicy(d.Get("policy_id").(string), nil)
+	log.Printf("[DEBUG] TEST RESURCE 1 POLICY ID: %d - POLICY TYPE: %s\n", policyGetResponse.Value.ID, policyGetResponse.Value.PolicyType)
+	if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+		var mySet map[string]struct{}
+		mySet = make(map[string]struct{})
+		log.Printf("[DEBUG] TEST RESURCE 2 POLICY GetRawState: %s - \n", rawPlan.AsValueMap())
+		log.Printf("[DEBUG] TEST RESURCE 3 POLICY GetRawPlan: %s - \n", d.GetRawPlan().AsValueMap())
+		log.Printf("[DEBUG] TEST RESURCE 4 POLICY GetRawConfig: %s - \n", d.GetRawConfig().AsValueMap())
+		for _, resource := range rawPlan.AsValueMap() {
+			if fmt.Sprintf("%v", resource.Type) == "incapsula_policy_asset_association" {
+				policyID := fmt.Sprintf("%v", resource.GetAttr("policy_id"))
+
+				policyGetResponse, err := client.GetPolicy(policyID, nil)
+
+				if err != nil {
+					log.Printf("[ERROR] Could not get Incapsula policy: %s - %s\n", policyID, err)
+					return err
+				}
+
+				log.Printf("[DEBUG] TEST RESURCE 3 POLICY POLICY TYPE: %s - \n", policyGetResponse.Value.PolicyType)
+
+				if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+					assetId := fmt.Sprintf("%v", resource.GetAttr("asset_id"))
+					log.Printf("[DEBUG] TEST RESURCE 5 POLICY POLICY ASSET: %s ASSETS LIST: %s - \n", assetId, mySet)
+					if _, exists := mySet[assetId]; exists {
+						return fmt.Errorf("site %s has more than one WAF Policy assigned", assetId)
+					} else {
+						mySet[assetId] = struct{}{}
+					}
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+func validateUniqueResource2(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
+	rawState := d.GetProviderMeta().(*terraform.InstanceState)
+	if rawState == nil {
+		return nil
+	}
+
+	client := m.(*Client)
+	policyGetResponse, _ := client.GetPolicy(d.Get("policy_id").(string), nil)
+	log.Printf("[DEBUG] TEST RESURCE 1 POLICY ID: %d - POLICY TYPE: %s\n", policyGetResponse.Value.ID, policyGetResponse.Value.PolicyType)
+	if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+		var mySet map[string]struct{}
+		mySet = make(map[string]struct{})
+		log.Printf("[DEBUG] TEST RESURCE 2 POLICY GetRawState: %s - \n", rawState.Attributes)
+		for _, resource := range rawState.Attributes {
+			if resource.Type == "incapsula_policy_asset_association" {
+				policyID := resource.Attributes["policy_id"].(string)
+
+				policyGetResponse, err := client.GetPolicy(policyID, nil)
+				if err != nil {
+					log.Printf("[ERROR] Could not get Incapsula policy: %s - %s\n", policyID, err)
+					return err
+				}
+
+				log.Printf("[DEBUG] TEST RESURCE 3 POLICY POLICY TYPE: %s - \n", policyGetResponse.Value.PolicyType)
+				if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+					assetId := resource.Attributes["asset_id"].(string)
+					log.Printf("[DEBUG] TEST RESURCE 5 POLICY POLICY ASSET: %s ASSETS LIST: %s - \n", assetId, mySet)
+					if _, exists := mySet[assetId]; exists {
+						return fmt.Errorf("site %s has more than one WAF Policy assigned", assetId)
+					} else {
+						mySet[assetId] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validateUniqueResource3(ctx context.Context, d *schema.ResourceDiff, m interface{}) error {
+	rawState := d.State().RootModule().Resources
+	if rawState == nil {
+		return nil
+	}
+
+	client := m.(*Client)
+	var mySet map[string]struct{}
+	mySet = make(map[string]struct{})
+
+	for _, resource := range rawState {
+		if resource.Type == "incapsula_policy_asset_association" {
+			policyID := resource.Primary.Attributes["policy_id"]
+
+			policyGetResponse, err := client.GetPolicy(policyID, nil)
+			if err != nil {
+				log.Printf("[ERROR] Could not get Incapsula policy: %s - %s\n", policyID, err)
+				return err
+			}
+
+			if policyGetResponse.Value.PolicyType == "WAF_RULES" {
+				assetId := resource.Primary.Attributes["asset_id"]
+				if _, exists := mySet[assetId]; exists {
+					return fmt.Errorf("site %s has more than one WAF Policy assigned", assetId)
+				} else {
+					mySet[assetId] = struct{}{}
+				}
+			}
+		}
+	}
 	return nil
 }
